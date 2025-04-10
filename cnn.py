@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv1D, Flatten, Dense, Dropout
+from tensorflow.keras.layers import Input, Conv1D, Dropout, Flatten, Dense
 from tensorflow.keras.utils import to_categorical
 
 # ---------------------------
@@ -25,10 +25,11 @@ def preprocess_df(df, is_train=True, num_scaler=None, cat_encoders=None, target_
     categorical_cols = ['Type_of_Loan', 'Payment_Behaviour', 'Credit_Mix', 'Payment_of_Min_Amount']
     
     # Convert numeric columns to numeric and fill missing values with median
+    # Convert numeric columns to numeric and fill missing values with median
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors='coerce')
-        df[col].fillna(df[col].median(), inplace=True)
-        
+        df[col] = df[col].fillna(df[col].median())
+     
     # For categorical columns, fill missing with mode
     for col in categorical_cols:
         df[col] = df[col].fillna(df[col].mode()[0])
@@ -87,14 +88,14 @@ y_val_cat = to_categorical(y_val, num_classes=num_classes)
 # ---------------------------
 # 2. Build the CNN Model
 # ---------------------------
-model = Sequential()
-# Use a Conv1D layer; kernel_size=2 scans pairs of features.
-model.add(Conv1D(filters=64, kernel_size=2, activation='relu', 
-                 input_shape=(X_train_np.shape[1], 1)))
-model.add(Dropout(0.2))
-model.add(Flatten())
-model.add(Dense(64, activation='relu'))
-model.add(Dense(num_classes, activation='softmax'))
+model = Sequential([
+    Input(shape=(X_train_np.shape[1], 1)),
+    Conv1D(filters=64, kernel_size=2, activation='relu'),
+    Dropout(0.2),
+    Flatten(),
+    Dense(64, activation='relu'),
+    Dense(num_classes, activation='softmax')
+])
 
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 model.summary()
@@ -104,7 +105,7 @@ model.summary()
 # ---------------------------
 history = model.fit(X_train_np, y_train_cat, 
                     validation_data=(X_val_np, y_val_cat),
-                    epochs=50, batch_size=8, verbose=1)
+                    epochs=200, batch_size=8, verbose=1)
 
 # ---------------------------
 # 4. Load and Preprocess Testing Data
