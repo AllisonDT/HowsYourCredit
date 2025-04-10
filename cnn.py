@@ -25,7 +25,6 @@ def preprocess_df(df, is_train=True, num_scaler=None, cat_encoders=None, target_
     categorical_cols = ['Type_of_Loan', 'Payment_Behaviour', 'Credit_Mix', 'Payment_of_Min_Amount']
     
     # Convert numeric columns to numeric and fill missing values with median
-    # Convert numeric columns to numeric and fill missing values with median
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors='coerce')
         df[col] = df[col].fillna(df[col].median())
