@@ -62,7 +62,7 @@ def clean_data(df):
 
 if __name__ == "__main__":
     # Specify the path to your input CSV file.
-    input_csv = "test.csv"  # Replace with your actual CSV filename.
+    input_csv = "/home/jamjorj/Documents/python/credit/test.csv"  # Replace with your actual CSV filename.
     
     # Load the CSV data into a DataFrame.
     df = pd.read_csv(input_csv)
