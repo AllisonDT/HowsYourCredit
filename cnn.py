@@ -129,17 +129,16 @@ class FeatureWeightingLayer(tf.keras.layers.Layer):
         return tf.expand_dims(weighted, axis=-1)
 
 # ---------------------------
-# Define Custom Callback to Log Epoch Metrics
+# Training log
 # ---------------------------
 class MetricsLogger(tf.keras.callbacks.Callback):
     def __init__(self, validation_data):
         super(MetricsLogger, self).__init__()
         self.validation_data = validation_data  # (X_val_np, y_val_cat)
-        self.logs_list = []
-        
+        self.final_metric = None
+
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        # Get the validation data and corresponding true labels
         val_X, val_y_cat = self.validation_data
         val_y = np.argmax(val_y_cat, axis=1)
         
@@ -149,48 +148,45 @@ class MetricsLogger(tf.keras.callbacks.Callback):
         
         # Compute the confusion matrix
         cm = confusion_matrix(val_y, pred_labels)
-        if cm.shape == (2, 2):  # Binary classification
-            tn, fp, fn, tp = cm.ravel()
-        else:
-            total = cm.sum()
-            TP = np.diag(cm)
-            FP = cm.sum(axis=0) - TP
-            FN = cm.sum(axis=1) - TP
-            TN = total - (TP + FP + FN)
-            tp = np.mean(TP)
-            fp = np.mean(FP)
-            fn = np.mean(FN)
-            tn = np.mean(TN)
         
-        # Compute precision, recall, and F1 score
+        # For binary classification: assume positive class is 1.
         if cm.shape == (2, 2):
+            cm_tp = int(cm[1, 1])
+            cm_fn = int(cm[1, 0])
+            cm_fp = int(cm[0, 1])
+            cm_tn = int(cm[0, 0])
             precision = precision_score(val_y, pred_labels, average='binary')
             recall = recall_score(val_y, pred_labels, average='binary')
             f1 = f1_score(val_y, pred_labels, average='binary')
         else:
+            # Fallback to macro-average (if not binary, though expected format is binary)
+            cm_tp = int(cm[1, 1])
+            cm_fn = int(cm[1, 0])
+            cm_fp = int(cm[0, 1])
+            cm_tn = int(cm[0, 0])
             precision = precision_score(val_y, pred_labels, average='macro')
             recall = recall_score(val_y, pred_labels, average='macro')
             f1 = f1_score(val_y, pred_labels, average='macro')
         
-        # Log the metrics for the epoch
-        entry = {
-            'epoch': epoch + 1,
+        # Save only the final epoch's metrics with the desired header names
+        self.final_metric = {
             'val_accuracy': logs.get('val_accuracy'),
             'val_loss': logs.get('val_loss'),
-            'tp': tp,
-            'fn': fn,
-            'fp': fp,
-            'tn': tn,
+            'cm_tp': cm_tp,
+            'cm_fn': cm_fn,
+            'cm_fp': cm_fp,
+            'cm_tn': cm_tn,
             'precision': precision,
             'recall': recall,
-            'f1': f1
+            'f1_score': f1
         }
-        self.logs_list.append(entry)
-        
+    
     def on_train_end(self, logs=None):
-        df_metrics = pd.DataFrame(self.logs_list)
-        df_metrics.to_csv('epoch_metrics_cnn.csv', index=False)
-        print('Epoch metrics saved to epoch_metrics_cnn.csv')
+        # Save the final epoch's metrics to CSV with the header:
+        # val_accuracy,val_loss,cm_tp,cm_fn,cm_fp,cm_tn,precision,recall,f1_score
+        df_metrics = pd.DataFrame([self.final_metric])
+        df_metrics.to_csv('training_cnn.csv', index=False)
+        print('Final training metrics saved to training_cnn.csv')
 
 # ---------------------------
 # 2. Build the Enhanced CNN Model with Feature Weighting, Batch Normalization, and Adjusted Dropout
@@ -219,7 +215,7 @@ model = Sequential([
     Dense(num_classes, activation='softmax')
 ])
 
-# Compile the model with adam optimizer and categorical crossentropy
+# Compile the model with Adam optimizer and categorical crossentropy loss
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 model.summary()
 
@@ -233,8 +229,8 @@ metrics_logger = MetricsLogger(validation_data=(X_val_np, y_val_cat))
 history = model.fit(
     X_train_np, y_train_cat, 
     validation_data=(X_val_np, y_val_cat),
-    epochs=100,         # You can adjust the max epochs if required.
-    batch_size=16,     # Experiment with batch size if needed.
+    epochs=75,         # Adjust max epochs as required.
+    batch_size=16,      # Experiment with batch size if needed.
     verbose=1,
     callbacks=[early_stop, lr_scheduler, metrics_logger]
 )
@@ -242,32 +238,7 @@ history = model.fit(
 # ---------------------------
 # Save Training Visualizations to PNG Files
 # ---------------------------
-
-# 1. Plot Loss vs. Epoch
-# plt.figure()
-# plt.plot(history.history['loss'], label='Training Loss')
-# plt.plot(history.history['val_loss'], label='Validation Loss')
-# plt.title('Loss vs. Epoch')
-# plt.xlabel('Epoch')
-# plt.ylabel('Loss')
-# plt.legend()
-# plt.savefig('loss_vs_epoch.png')
-# plt.close()
-
-# # 2. Plot Accuracy vs. Epoch
-# plt.figure()
-# plt.plot(history.history['accuracy'], label='Training Accuracy')
-# plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
-# plt.title('Accuracy vs. Epoch')
-# plt.xlabel('Epoch')
-# plt.ylabel('Accuracy')
-# plt.legend()
-# plt.savefig('accuracy_vs_epoch.png')
-# plt.close()
-
-# ... (your training and visualization code above)
-
-# 3. Plot Confusion Matrix on the Validation Set
+# Plot Confusion Matrix on the Validation Set
 val_preds = np.argmax(model.predict(X_val_np, verbose=0), axis=1)
 val_true = np.argmax(y_val_cat, axis=1)
 cm = confusion_matrix(val_true, val_preds)
@@ -289,21 +260,15 @@ for i in range(cm.shape[0]):
 plt.savefig('confusion_matrix_cnn.png')
 plt.close()
 
-# Convert the logged metrics from the custom callback into a DataFrame
-metrics_df = pd.DataFrame(metrics_logger.logs_list)
-print(metrics_df)  # Optional: Check the DataFrame in console
-
+# (Optional) Plot training curves using the history object.
 plt.figure(figsize=(10, 6))
-plt.plot(metrics_df['epoch'], metrics_df['val_accuracy'], label='Validation Accuracy')
-plt.plot(metrics_df['epoch'], metrics_df['val_loss'], label='Validation Loss')
-plt.plot(metrics_df['epoch'], metrics_df['precision'], label='Precision')
-plt.plot(metrics_df['epoch'], metrics_df['recall'], label='Recall')
-plt.plot(metrics_df['epoch'], metrics_df['f1'], label='F1 Score')
-plt.title('Epoch vs. Validation Metrics')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.title('Validation Metrics vs. Epochs')
 plt.xlabel('Epoch')
 plt.ylabel('Metric Value')
 plt.legend()
-plt.savefig('epoch_vs_metrics_cnn.png')
+plt.savefig('validation_metrics_cnn.png')
 plt.close()
 
 # ---------------------------
