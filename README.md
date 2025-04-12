@@ -18,3 +18,8 @@ Download these datasets and add them to your local: https://www.kaggle.com/datas
 ```bash
 python3 cleanTrainingData.py
 ```
+
+## 3. Cleaning Testing Data
+```bash
+python3 cleanTestingData.py
+```
