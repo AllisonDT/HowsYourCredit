@@ -21,38 +21,15 @@ my_test = test_df.copy()
 
 # Feature engineering
 for df in [my_train, my_test]:
-    # Ensure numerics are numeric
-    for col in [
-        'Outstanding_Debt', 'Changed_Credit_Limit', 'Monthly_Balance',
-        'Amount_invested_monthly', 'Annual_Income', 'Num_Credit_Card',
-        'Interest_Rate', 'Num_Bank_Accounts', 'Age'
-    ]:
-        df[col] = pd.to_numeric(df[col], errors='coerce')
-    
-    # Original features
     df['debt_to_income'] = df['Outstanding_Debt'] / (df['Annual_Income'] + 1e-6)
     df['credit_use_ratio'] = df['Credit_Utilization_Ratio'] * df['Num_Credit_Card']
     df['age_credit_mix'] = df['Age'] * df['Credit_Mix'].apply(lambda x: 0 if pd.isna(x) else ord(str(x)[0]) - ord('A') + 1)
     df['debt_credit_interaction'] = df['debt_to_income'] * df['credit_use_ratio']
-    
-    # NEW features
-    df['util_per_card'] = df['Credit_Utilization_Ratio'] / (df['Num_Credit_Card'] + 1e-6)
-    df['avg_investment_ratio'] = df['Amount_invested_monthly'] / (df['Monthly_Balance'] + 1e-6)
-    df['loan_count'] = df['Type_of_Loan'].apply(lambda x: len(str(x).split(',')) if pd.notna(x) else 0)
-    df['credit_limit_change_ratio'] = df['Changed_Credit_Limit'] / (df['Outstanding_Debt'] + 1e-6)
-    df['investment_income_ratio'] = df['Amount_invested_monthly'] / (df['Annual_Income'] + 1e-6)
-    df['monthly_burden'] = df['Monthly_Balance'] / (df['Num_Bank_Accounts'] + 1e-6)
-    df['income_per_age'] = df['Annual_Income'] / (df['Age'] + 1e-6)
-
-    # Clip outliers
     for col in ['Outstanding_Debt', 'Changed_Credit_Limit', 'Monthly_Balance']:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
         df[col] = df[col].clip(lower=df[col].quantile(0.01), upper=df[col].quantile(0.99))
-
-    # Log transform
     for col in ['Outstanding_Debt', 'Monthly_Balance', 'Amount_invested_monthly']:
         df[col] = np.log1p(df[col])
-
-    # Discretize interest rate
     df['interest_bin'] = pd.cut(df['Interest_Rate'], bins=[-1, 5, 15, 50], labels=['low', 'med', 'high'])
 
 # Encode target
@@ -167,3 +144,5 @@ output_df = my_test[['ID']].copy()
 output_df['Predicted_Credit_Score'] = pred_labels
 output_df.to_csv('predictions_mlp.csv', index=False)
 print("✅ predictions_mlp.csv saved")
+
+
