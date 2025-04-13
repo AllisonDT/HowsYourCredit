@@ -11,7 +11,6 @@ from tensorflow.keras.activations import swish
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping
 from sklearn.preprocessing import PowerTransformer
-from sklearn.metrics import classification_report
 
 
 # Load clean files
@@ -32,11 +31,13 @@ for df in [my_train, my_test]:
     ]:
         df[col] = pd.to_numeric(df[col], errors='coerce')
     
-    # Feature Engineering
+    # Original features
     df['debt_to_income'] = df['Outstanding_Debt'] / (df['Annual_Income'] + 1e-6)
     df['credit_use_ratio'] = df['Credit_Utilization_Ratio'] * df['Num_Credit_Card']
     df['age_credit_mix'] = df['Age'] * df['Credit_Mix'].apply(lambda x: 0 if pd.isna(x) else ord(str(x)[0]) - ord('A') + 1)
     df['debt_credit_interaction'] = df['debt_to_income'] * df['credit_use_ratio']
+    
+    # NEW features
     df['util_per_card'] = df['Credit_Utilization_Ratio'] / (df['Num_Credit_Card'] + 1e-6)
     df['avg_investment_ratio'] = df['Amount_invested_monthly'] / (df['Monthly_Balance'] + 1e-6)
     df['loan_count'] = df['Type_of_Loan'].apply(lambda x: len(str(x).split(',')) if pd.notna(x) else 0)
@@ -66,7 +67,7 @@ target_encoder = LabelEncoder()
 my_train['Credit_Score'] = target_encoder.fit_transform(my_train['Credit_Score'])
 
 # Define columns
-categorical_cols = ['Type_of_Loan', 'Payment_Behaviour', 'Credit_Mix', 'Payment_of_Min_Amount', 'interest_bin', 'Occupation', 'Credit_History_Age']
+categorical_cols = ['Type_of_Loan', 'Payment_Behaviour', 'Credit_Mix', 'Payment_of_Min_Amount', 'interest_bin']
 numeric_cols = my_train.select_dtypes(include=np.number).columns.tolist()
 numeric_cols = [col for col in numeric_cols if col != 'Credit_Score']
 
@@ -153,60 +154,41 @@ history = model.fit(X_train, y_train,
                     callbacks=[lr_schedule, early_stop],
                     verbose=1)
 
-# --- Evaluate and record ---
+# Evaluate
 y_pred = model.predict(X_val)
 y_pred_classes = np.argmax(y_pred, axis=1)
 
-# Confusion matrix
 cm = confusion_matrix(y_val, y_pred_classes)
+tp = np.diag(cm)
+fp = cm.sum(axis=0) - tp
+fn = cm.sum(axis=1) - tp
+tn = cm.sum() - (fp + fn + tp)
 
-# Classification report (per-class precision, recall, f1)
-report = classification_report(y_val, y_pred_classes, output_dict=True)
-df_report = pd.DataFrame(report).transpose()
-df_report.to_csv('per_class_report.csv', index=True)
-
-# Overall metrics
 precision = precision_score(y_val, y_pred_classes, average='macro')
 recall = recall_score(y_val, y_pred_classes, average='macro')
 f1 = f1_score(y_val, y_pred_classes, average='macro')
 
-# Breakdown from CM
-tp = np.diag(cm).sum()
-fp = cm.sum(axis=0) - np.diag(cm)
-fn = cm.sum(axis=1) - np.diag(cm)
-tn = cm.sum() - (tp + fp.sum() + fn.sum())
-
-# Save per-epoch metrics
-pd.DataFrame({
-    'epoch': range(len(history.history['loss'])),
-    'train_loss': history.history['loss'],
-    'val_loss': history.history['val_loss'],
-    'train_accuracy': history.history['accuracy'],
-    'val_accuracy': history.history['val_accuracy'],
-}).to_csv('epoch_metrics.csv', index=False)
-
-# Save predictions
-pd.DataFrame({
-    'y_true': y_val,
-    'y_pred': y_pred_classes
-}).to_csv('val_predictions.csv', index=False)
-
-# Save CM
-pd.DataFrame(cm).to_csv('confusion_matrix.csv', index=False)
-
-# Save summary metrics including TP/FN/FP/TN
+# Save training metrics
 df_metrics = pd.DataFrame({
     'val_accuracy': [history.history['val_accuracy'][-1]],
     'val_loss': [history.history['val_loss'][-1]],
-    'cm_tp': [tp],
+    'cm_tp': [tp.sum()],
     'cm_fn': [fn.sum()],
     'cm_fp': [fp.sum()],
-    'cm_tn': [tn],
+    'cm_tn': [tn.sum()],
     'precision': [precision],
     'recall': [recall],
     'f1_score': [f1]
 })
-
 df_metrics.to_csv('training_mlp.csv', index=False)
-print("✅ training_mlp.csv, per_class_report.csv, epoch_metrics.csv, val_predictions.csv, confusion_matrix.csv saved")
+print("✅ training_mlp.csv saved")
 
+# Predict test
+pred_probs = model.predict(X_test_full)
+pred_classes = np.argmax(pred_probs, axis=1)
+pred_labels = target_encoder.inverse_transform(pred_classes)
+
+output_df = my_test[['ID']].copy()
+output_df['Predicted_Credit_Score'] = pred_labels
+output_df.to_csv('predictions_mlp.csv', index=False)
+print("✅ predictions_mlp.csv saved")
