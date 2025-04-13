@@ -23,3 +23,13 @@ python3 cleanTrainingData.py
 ```bash
 python3 cleanTestingData.py
 ```
+
+## 4. Comparisons
+Make sure that each folder has a predictions_model.csv file in it!!
+```bash
+python3 predictionComparison.py
+```
+Make sure that each folder has a training_model.csv file in it!!
+```bash
+python3 trainingComparison.py
+```
