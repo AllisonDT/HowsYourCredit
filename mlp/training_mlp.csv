@@ -1,2 +1,0 @@
-val_accuracy,val_loss,cm_tp,cm_fn,cm_fp,cm_tn,precision,recall,f1_score
-0.757950604,0.664095104,14142,4693,4693,-4693,0.73041035,0.788716601,0.743390823

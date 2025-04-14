@@ -1,2 +1,0 @@
-val_accuracy,val_loss,cm_tp_sum,cm_fn_sum,cm_fp_sum,cm_tn_sum,precision_macro,recall_macro,f1_score_macro
-0.7413326501846313,0.6150913834571838,13963,4872,4872,32798,0.7179615333976322,0.7649739748105215,0.7301241099844704
