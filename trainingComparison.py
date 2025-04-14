@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-file_names = ["mlp/training_mlp.csv", "cnn/training_cnn.csv", "transformers/training_transformers.csv", "lstm/training_lstm.csv"]
+file_names = ["mlp/training_mlp.csv", "cnn/training_cnn.csv", "transformers/training_transformer.csv", "lstm/training_lstm.csv"]
 model_names = ["MLP", "CNN", "Transformers", "LSTM"]
 
 selected_metrics = ['val_accuracy', 'precision', 'recall', 'f1_score']
