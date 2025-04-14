@@ -210,3 +210,14 @@ df_metrics = pd.DataFrame({
 df_metrics.to_csv('training_mlp.csv', index=False)
 print("✅ training_mlp.csv, per_class_report.csv, epoch_metrics.csv, val_predictions.csv, confusion_matrix.csv saved")
 
+# --- Predict on test and save ---
+pred_probs = model.predict(X_test_full)
+pred_classes = np.argmax(pred_probs, axis=1)
+pred_labels = target_encoder.inverse_transform(pred_classes)
+
+output_df = my_test[['ID']].copy()
+output_df['Predicted_Credit_Score'] = pred_labels
+output_df.to_csv('predictions_mlp.csv', index=False)
+print("✅ predictions_mlp.csv saved")
+
+
