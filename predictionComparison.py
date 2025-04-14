@@ -6,7 +6,7 @@ from sklearn.metrics import cohen_kappa_score
 df1 = pd.read_csv('mlp/predictions_mlp.csv')
 df2 = pd.read_csv('cnn/predictions_cnn.csv')
 df3 = pd.read_csv('lstm/predictions_lstm.csv')
-df4 = pd.read_csv('transformers/predictions_transformers.csv')
+df4 = pd.read_csv('transformers/predictions_transformer.csv')
 
 df1.rename(columns={'Predicted_Credit_Score': 'MLP'}, inplace=True)
 df2.rename(columns={'Predicted_Credit_Score': 'CNN'}, inplace=True)
