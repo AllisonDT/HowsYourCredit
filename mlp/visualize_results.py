@@ -28,7 +28,7 @@ plt.show()
 
 # 2. Confusion matrix
 cm = pd.read_csv("./mlp/confusion_matrix.csv").values
-labels = ['Poor', 'Standard', 'Good']  # Adjust if using different encoding
+labels = ['Poor', 'Good', 'Standard']
 disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
 disp.plot(cmap='Blues', values_format='d')
 plt.title("Confusion Matrix")
